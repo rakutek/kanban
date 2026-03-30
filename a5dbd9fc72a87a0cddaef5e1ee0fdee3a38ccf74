@@ -1,0 +1,24 @@
+README.md
+  8923db56f978df94 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "a5dbd9fc72a87a0cddaef5e1ee0fdee3a38ccf74",
+  "prompts": {
+    "8923db56f978df94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1429281-ab5b-4459-bbea-d0b63c55c144",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Raku Sakaguchi <rakutek12@gmail.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/686fd7fa4344f7529b7352d9dc1a9db04d87a80dce9ab4ba20e2c3210ba43592"
+    }
+  }
+}
