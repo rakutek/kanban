@@ -1,0 +1,34 @@
+web-ui/src/components/project-navigation-panel.tsx
+  46c22d4e3b2d30c4 3,80-81,94-95,211-226,228,324-339,356
+web-ui/src/App.tsx
+  46c22d4e3b2d30c4 15,89,97,538-551,699-700,771-772,774,786-789,792-793,795,802,809,816-824,841,873-877
+web-ui/src/storage/local-storage-store.ts
+  46c22d4e3b2d30c4 14
+web-ui/src/components/multi-project/multi-project-overview.tsx
+  46c22d4e3b2d30c4 1-82
+web-ui/src/components/multi-project/summary-bar.tsx
+  46c22d4e3b2d30c4 1-79
+web-ui/src/components/multi-project/project-row.tsx
+  46c22d4e3b2d30c4 1-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "ddbc0088594b176ab41f3c5b81a47cedf8cc1c31",
+  "prompts": {
+    "46c22d4e3b2d30c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c2eb946-1d38-4067-8783-e123cd80ad98",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Raku Sakaguchi <rakutek12@gmail.com>",
+      "messages": [],
+      "total_additions": 449,
+      "total_deletions": 53,
+      "accepted_lines": 425,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/60be01ad2ec7f17c9adf53718eaa57d5d8a3904aaacfe27fbf16fa20462636f1"
+    }
+  }
+}
