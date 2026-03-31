@@ -1,6 +1,6 @@
 import * as Collapsible from "@radix-ui/react-collapsible";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, ChevronUp, Ellipsis, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Ellipsis, LayoutGrid, Plus } from "lucide-react";
 import { type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ClineIcon } from "@/components/ui/cline-icon";
@@ -77,6 +77,8 @@ export function ProjectNavigationPanel({
 	onActiveSectionChange,
 	canShowAgentSection,
 	agentSectionContent,
+	isOverviewMode = false,
+	onSelectOverview,
 	onSelectProject,
 	onRemoveProject,
 	onAddProject,
@@ -89,6 +91,8 @@ export function ProjectNavigationPanel({
 	onActiveSectionChange: (section: "projects" | "agent") => void;
 	canShowAgentSection: boolean;
 	agentSectionContent?: ReactNode;
+	isOverviewMode?: boolean;
+	onSelectOverview?: () => void;
 	onSelectProject: (projectId: string) => void;
 	onRemoveProject: (projectId: string) => Promise<boolean>;
 	onAddProject: () => void;
@@ -204,8 +208,24 @@ export function ProjectNavigationPanel({
 					onMouseDown={startDrag}
 					className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize z-10 hover:bg-accent/20"
 				/>
+				{onSelectOverview ? (
+					<button
+						key="__overview__"
+						type="button"
+						title="All Projects"
+						onClick={onSelectOverview}
+						className={cn(
+							"w-8 h-8 rounded-md text-xs font-semibold shrink-0 border-0 cursor-pointer flex items-center justify-center",
+							isOverviewMode
+								? "bg-accent text-white"
+								: "bg-surface-3 text-text-secondary hover:text-text-primary hover:bg-surface-4",
+						)}
+					>
+						<LayoutGrid size={16} />
+					</button>
+				) : null}
 				{sortedProjects.map((project) => {
-					const isCurrent = currentProjectId === project.id;
+					const isCurrent = !isOverviewMode && currentProjectId === project.id;
 					const letter = project.name.charAt(0).toUpperCase();
 					return (
 						<button
@@ -301,6 +321,22 @@ export function ProjectNavigationPanel({
 
 			{activeSection === "projects" ? (
 				<>
+					{onSelectOverview ? (
+						<div style={{ padding: "0 12px" }}>
+							<button
+								type="button"
+								onClick={onSelectOverview}
+								className={cn(
+									"kb-project-row flex w-full cursor-pointer items-center gap-1.5 rounded-md text-sm",
+									isOverviewMode ? "kb-project-row-selected" : "text-text-secondary hover:text-text-primary",
+								)}
+								style={{ padding: "6px 8px" }}
+							>
+								<LayoutGrid size={14} className="shrink-0" />
+								<span className="font-medium">All Projects</span>
+							</button>
+						</div>
+					) : null}
 					<div
 						className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-1"
 						style={{ padding: "4px 12px" }}
@@ -317,7 +353,7 @@ export function ProjectNavigationPanel({
 							<ProjectRow
 								key={project.id}
 								project={project}
-								isCurrent={currentProjectId === project.id}
+								isCurrent={!isOverviewMode && currentProjectId === project.id}
 								removingProjectId={removingProjectId}
 								onSelect={onSelectProject}
 								onRemove={(projectId) => {

@@ -12,6 +12,7 @@ import { DebugDialog } from "@/components/debug-dialog";
 import { AgentTerminalPanel } from "@/components/detail-panels/agent-terminal-panel";
 import { GitHistoryView } from "@/components/git-history-view";
 import { KanbanBoard } from "@/components/kanban-board";
+import { MultiProjectOverview } from "@/components/multi-project/multi-project-overview";
 import { ProjectNavigationPanel } from "@/components/project-navigation-panel";
 import { ResizableBottomPane } from "@/components/resizable-bottom-pane";
 import { RuntimeSettingsDialog, type RuntimeSettingsSection } from "@/components/runtime-settings-dialog";
@@ -85,6 +86,7 @@ export default function App(): ReactElement {
 	const [homeSidebarSection, setHomeSidebarSection] = useState<"projects" | "agent">("projects");
 	const [isClearTrashDialogOpen, setIsClearTrashDialogOpen] = useState(false);
 	const [isGitHistoryOpen, setIsGitHistoryOpen] = useState(false);
+	const [isOverviewMode, setIsOverviewMode] = useState(false);
 	const [pendingTaskStartAfterEditId, setPendingTaskStartAfterEditId] = useState<string | null>(null);
 	const taskEditorResetRef = useRef<() => void>(() => {});
 	const lastStreamErrorRef = useRef<string | null>(null);
@@ -92,6 +94,7 @@ export default function App(): ReactElement {
 		setCanPersistWorkspaceState(false);
 		setSelectedTaskId(null);
 		setIsGitHistoryOpen(false);
+		setIsOverviewMode(false);
 		setPendingTaskStartAfterEditId(null);
 		taskEditorResetRef.current();
 	}, []);
@@ -532,6 +535,20 @@ export default function App(): ReactElement {
 		setIsGitHistoryOpen(false);
 	}, []);
 
+	const handleSelectOverview = useCallback(() => {
+		setIsOverviewMode(true);
+		setSelectedTaskId(null);
+		setIsGitHistoryOpen(false);
+	}, []);
+
+	const handleSelectProjectFromOverview = useCallback(
+		(projectId: string) => {
+			setIsOverviewMode(false);
+			void handleSelectProject(projectId);
+		},
+		[handleSelectProject],
+	);
+
 	const handleOpenSettings = useCallback((section?: RuntimeSettingsSection) => {
 		setSettingsInitialSection(section ?? null);
 		setIsSettingsOpen(true);
@@ -679,7 +696,8 @@ export default function App(): ReactElement {
 	const navbarWorkspaceHint = hasNoProjects ? undefined : activeWorkspaceHint;
 	const navbarRuntimeHint = hasNoProjects ? undefined : runtimeHint;
 	const shouldHideProjectDependentTopBarActions =
-		!selectedCard && (isProjectSwitching || isAwaitingWorkspaceSnapshot || isWorkspaceMetadataPending);
+		!selectedCard &&
+		(isOverviewMode || isProjectSwitching || isAwaitingWorkspaceSnapshot || isWorkspaceMetadataPending);
 
 	const {
 		openTargetOptions,
@@ -750,7 +768,10 @@ export default function App(): ReactElement {
 					onActiveSectionChange={setHomeSidebarSection}
 					canShowAgentSection={!hasNoProjects && Boolean(currentProjectId)}
 					agentSectionContent={homeSidebarAgentPanel}
+					isOverviewMode={isOverviewMode}
+					onSelectOverview={handleSelectOverview}
 					onSelectProject={(projectId) => {
+						setIsOverviewMode(false);
 						void handleSelectProject(projectId);
 					}}
 					onRemoveProject={handleRemoveProject}
@@ -762,40 +783,46 @@ export default function App(): ReactElement {
 			<div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 				<TopBar
 					onBack={selectedCard ? handleBack : undefined}
-					workspacePath={navbarWorkspacePath}
-					isWorkspacePathLoading={shouldShowProjectLoadingState}
-					workspaceHint={navbarWorkspaceHint}
-					runtimeHint={navbarRuntimeHint}
+					workspacePath={isOverviewMode ? "All Projects" : navbarWorkspacePath}
+					isWorkspacePathLoading={!isOverviewMode && shouldShowProjectLoadingState}
+					workspaceHint={isOverviewMode ? undefined : navbarWorkspaceHint}
+					runtimeHint={isOverviewMode ? undefined : navbarRuntimeHint}
 					selectedTaskId={selectedCard?.card.id ?? null}
 					selectedTaskBaseRef={selectedCard?.card.baseRef ?? null}
-					showHomeGitSummary={!hasNoProjects && !selectedCard}
-					runningGitAction={selectedCard || hasNoProjects ? null : runningGitAction}
+					showHomeGitSummary={!isOverviewMode && !hasNoProjects && !selectedCard}
+					runningGitAction={selectedCard || hasNoProjects || isOverviewMode ? null : runningGitAction}
 					onGitFetch={
-						selectedCard
+						selectedCard || isOverviewMode
 							? undefined
 							: () => {
 									void runGitAction("fetch");
 								}
 					}
 					onGitPull={
-						selectedCard
+						selectedCard || isOverviewMode
 							? undefined
 							: () => {
 									void runGitAction("pull");
 								}
 					}
 					onGitPush={
-						selectedCard
+						selectedCard || isOverviewMode
 							? undefined
 							: () => {
 									void runGitAction("push");
 								}
 					}
 					onToggleTerminal={
-						hasNoProjects ? undefined : selectedCard ? handleToggleDetailTerminal : handleToggleHomeTerminal
+						hasNoProjects || isOverviewMode
+							? undefined
+							: selectedCard
+								? handleToggleDetailTerminal
+								: handleToggleHomeTerminal
 					}
-					isTerminalOpen={selectedCard ? isDetailTerminalOpen : showHomeBottomTerminal}
-					isTerminalLoading={selectedCard ? isDetailTerminalStarting : isHomeTerminalStarting}
+					isTerminalOpen={isOverviewMode ? false : selectedCard ? isDetailTerminalOpen : showHomeBottomTerminal}
+					isTerminalLoading={
+						isOverviewMode ? false : selectedCard ? isDetailTerminalStarting : isHomeTerminalStarting
+					}
 					onOpenSettings={handleOpenSettings}
 					showDebugButton={debugModeEnabled}
 					onOpenDebugDialog={debugModeEnabled ? handleOpenDebugDialog : undefined}
@@ -811,7 +838,7 @@ export default function App(): ReactElement {
 					onOpenWorkspace={onOpenWorkspace}
 					canOpenWorkspace={canOpenWorkspace}
 					isOpeningWorkspace={isOpeningWorkspace}
-					onToggleGitHistory={hasNoProjects ? undefined : handleToggleGitHistory}
+					onToggleGitHistory={hasNoProjects || isOverviewMode ? undefined : handleToggleGitHistory}
 					isGitHistoryOpen={isGitHistoryOpen}
 					hideProjectDependentActions={shouldHideProjectDependentTopBarActions}
 				/>
@@ -843,6 +870,11 @@ export default function App(): ReactElement {
 									</Button>
 								</div>
 							</div>
+						) : isOverviewMode ? (
+							<MultiProjectOverview
+								projects={displayedProjects}
+								onSelectProject={handleSelectProjectFromOverview}
+							/>
 						) : (
 							<div className="flex flex-1 flex-col min-h-0 min-w-0">
 								<div className="flex flex-1 min-h-0 min-w-0">

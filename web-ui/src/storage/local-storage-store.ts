@@ -11,6 +11,7 @@ export enum LocalStorageKey {
 	PreferredOpenTarget = "kanban.preferred-open-target",
 	NotificationBadgeClearEvent = "kanban.notification-badge-clear.v1",
 	TabVisibilityPresence = "kanban.tab-visibility-presence.v1",
+	OverviewExpandedProjects = "kanban.overview-expanded-projects",
 }
 
 function getLocalStorage(): Storage | null {
