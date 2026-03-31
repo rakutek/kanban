@@ -8,7 +8,7 @@ export type TaskImage = RuntimeTaskImage;
 export const DEFAULT_TASK_AUTO_REVIEW_MODE: TaskAutoReviewMode = "commit";
 
 export function resolveTaskAutoReviewMode(mode: TaskAutoReviewMode | null | undefined): TaskAutoReviewMode {
-	if (mode === "pr" || mode === "move_to_trash") {
+	if (mode === "pr" || mode === "move_to_trash" || mode === "agent_review") {
 		return mode;
 	}
 	return DEFAULT_TASK_AUTO_REVIEW_MODE;
@@ -22,6 +22,9 @@ export function getTaskAutoReviewActionLabel(mode: TaskAutoReviewMode | null | u
 	if (resolvedMode === "move_to_trash") {
 		return "move to trash";
 	}
+	if (resolvedMode === "agent_review") {
+		return "agent review";
+	}
 	return "commit";
 }
 
@@ -32,6 +35,9 @@ export function getTaskAutoReviewCancelButtonLabel(mode: TaskAutoReviewMode | nu
 	}
 	if (resolvedMode === "move_to_trash") {
 		return "Cancel Auto-trash";
+	}
+	if (resolvedMode === "agent_review") {
+		return "Cancel Agent Review";
 	}
 	return "Cancel Auto-commit";
 }
@@ -46,6 +52,10 @@ export interface BoardCard {
 	baseRef: string;
 	createdAt: number;
 	updatedAt: number;
+	agentReviewParentTaskId?: string;
+	agentReviewChildTaskId?: string;
+	agentReviewIterationCount?: number;
+	agentReviewMaxIterations?: number;
 }
 
 export interface BoardColumn {

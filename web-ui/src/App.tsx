@@ -580,6 +580,8 @@ export default function App(): ReactElement {
 		handleConfirmClearTrash,
 		handleAddReviewComments,
 		handleSendReviewComments,
+		handleRunAgentReview,
+		agentReviewLaunchingByTaskId,
 		moveToTrashLoadingById,
 		trashTaskCount,
 	} = useBoardInteractions({
@@ -989,6 +991,10 @@ export default function App(): ReactElement {
 								onOpenPrTask={handleOpenPrTask}
 								onAgentCommitTask={handleAgentCommitTask}
 								onAgentOpenPrTask={handleAgentOpenPrTask}
+								onRunAgentReview={handleRunAgentReview}
+								agentReviewLaunching={
+									selectedCard ? (agentReviewLaunchingByTaskId[selectedCard.card.id] ?? false) : false
+								}
 								commitTaskLoadingById={commitTaskLoadingById}
 								openPrTaskLoadingById={openPrTaskLoadingById}
 								agentCommitTaskLoadingById={agentCommitTaskLoadingById}

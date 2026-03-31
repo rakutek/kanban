@@ -24,6 +24,10 @@ export interface TaskDraft {
 	autoReviewMode?: TaskAutoReviewMode;
 	images?: TaskImage[];
 	baseRef: string;
+	agentReviewParentTaskId?: string;
+	agentReviewChildTaskId?: string;
+	agentReviewIterationCount?: number;
+	agentReviewMaxIterations?: number;
 }
 
 export interface TaskMoveEvent {
@@ -274,6 +278,8 @@ export function addTaskToColumnWithResult(
 			autoReviewMode: draft.autoReviewMode,
 			images: draft.images,
 			baseRef: draft.baseRef,
+			agentReviewParentTaskId: draft.agentReviewParentTaskId,
+			agentReviewMaxIterations: draft.agentReviewMaxIterations,
 		},
 		createBrowserUuid,
 	);
@@ -469,6 +475,15 @@ export function updateTask(board: BoardData, taskId: string, draft: TaskDraft): 
 							: undefined,
 				baseRef,
 				updatedAt: Date.now(),
+				...(draft.agentReviewChildTaskId !== undefined
+					? { agentReviewChildTaskId: draft.agentReviewChildTaskId }
+					: {}),
+				...(draft.agentReviewIterationCount !== undefined
+					? { agentReviewIterationCount: draft.agentReviewIterationCount }
+					: {}),
+				...(draft.agentReviewMaxIterations !== undefined
+					? { agentReviewMaxIterations: draft.agentReviewMaxIterations }
+					: {}),
 			};
 		});
 		return columnUpdated ? { ...column, cards } : column;

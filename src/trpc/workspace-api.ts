@@ -26,6 +26,7 @@ import {
 } from "../workspace/get-workspace-changes";
 import { getCommitDiff, getGitLog, getGitRefs } from "../workspace/git-history";
 import { discardGitChanges, getGitSyncSummary, runGitCheckoutAction, runGitSyncAction } from "../workspace/git-sync";
+import { getGitStdout } from "../workspace/git-utils";
 import { searchWorkspaceFiles } from "../workspace/search-workspace-files";
 import {
 	deleteTaskWorktree,
@@ -436,6 +437,27 @@ export function createWorkspaceApi(deps: CreateWorkspaceApiDependencies): Runtim
 				cwd: diffCwd,
 				commitHash: input.commitHash,
 			});
+		},
+		loadTaskDiff: async (workspaceScope, input) => {
+			const taskId = input.taskId.trim();
+			const baseRef = input.baseRef.trim();
+			if (!taskId || !baseRef) {
+				return { ok: false, diff: "", summary: "", error: "Missing taskId or baseRef." };
+			}
+			try {
+				const taskCwd = await resolveTaskCwd({
+					cwd: workspaceScope.workspacePath,
+					taskId,
+					baseRef,
+					ensure: false,
+				});
+				const diff = await getGitStdout(["diff", "HEAD"], taskCwd);
+				const statOutput = await getGitStdout(["diff", "--stat", "HEAD"], taskCwd);
+				return { ok: true, diff, summary: statOutput.trim() };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return { ok: false, diff: "", summary: "", error: message };
+			}
 		},
 	};
 }

@@ -16,6 +16,8 @@ export interface RuntimeCreateTaskInput {
 	autoReviewMode?: RuntimeTaskAutoReviewMode;
 	images?: RuntimeTaskImage[];
 	baseRef: string;
+	agentReviewParentTaskId?: string;
+	agentReviewMaxIterations?: number;
 }
 
 export interface RuntimeUpdateTaskInput {
@@ -25,10 +27,13 @@ export interface RuntimeUpdateTaskInput {
 	autoReviewMode?: RuntimeTaskAutoReviewMode;
 	images?: RuntimeTaskImage[];
 	baseRef: string;
+	agentReviewChildTaskId?: string | null;
+	agentReviewIterationCount?: number;
+	agentReviewMaxIterations?: number;
 }
 
 function normalizeTaskAutoReviewMode(value: RuntimeTaskAutoReviewMode | null | undefined): RuntimeTaskAutoReviewMode {
-	if (value === "pr" || value === "move_to_trash") {
+	if (value === "pr" || value === "move_to_trash" || value === "agent_review") {
 		return value;
 	}
 	return "commit";
@@ -287,6 +292,8 @@ export function addTaskToColumn(
 		baseRef,
 		createdAt: now,
 		updatedAt: now,
+		...(input.agentReviewParentTaskId ? { agentReviewParentTaskId: input.agentReviewParentTaskId } : {}),
+		...(input.agentReviewMaxIterations ? { agentReviewMaxIterations: input.agentReviewMaxIterations } : {}),
 	};
 
 	const targetColumnIndex = board.columns.findIndex((column) => column.id === columnId);
@@ -599,6 +606,15 @@ export function updateTask(
 				images: input.images === undefined ? card.images : cloneTaskImages(input.images),
 				baseRef,
 				updatedAt: now,
+				...(input.agentReviewChildTaskId !== undefined
+					? { agentReviewChildTaskId: input.agentReviewChildTaskId ?? undefined }
+					: {}),
+				...(input.agentReviewIterationCount !== undefined
+					? { agentReviewIterationCount: input.agentReviewIterationCount }
+					: {}),
+				...(input.agentReviewMaxIterations !== undefined
+					? { agentReviewMaxIterations: input.agentReviewMaxIterations }
+					: {}),
 			};
 			return updatedTask;
 		});

@@ -76,7 +76,7 @@ export type RuntimeAgentId = z.infer<typeof runtimeAgentIdSchema>;
 export const runtimeBoardColumnIdSchema = z.enum(["backlog", "in_progress", "review", "trash"]);
 export type RuntimeBoardColumnId = z.infer<typeof runtimeBoardColumnIdSchema>;
 
-export const runtimeTaskAutoReviewModeSchema = z.enum(["commit", "pr", "move_to_trash"]);
+export const runtimeTaskAutoReviewModeSchema = z.enum(["commit", "pr", "move_to_trash", "agent_review"]);
 export type RuntimeTaskAutoReviewMode = z.infer<typeof runtimeTaskAutoReviewModeSchema>;
 
 export const runtimeTaskImageSchema = z.object({
@@ -97,6 +97,10 @@ export const runtimeBoardCardSchema = z.object({
 	baseRef: z.string(),
 	createdAt: z.number(),
 	updatedAt: z.number(),
+	agentReviewParentTaskId: z.string().optional(),
+	agentReviewChildTaskId: z.string().optional(),
+	agentReviewIterationCount: z.number().int().nonnegative().optional(),
+	agentReviewMaxIterations: z.number().int().positive().optional(),
 });
 export type RuntimeBoardCard = z.infer<typeof runtimeBoardCardSchema>;
 
@@ -1038,6 +1042,20 @@ export const runtimeGitRefsResponseSchema = z.object({
 	error: z.string().optional(),
 });
 export type RuntimeGitRefsResponse = z.infer<typeof runtimeGitRefsResponseSchema>;
+
+export const runtimeTaskDiffRequestSchema = z.object({
+	taskId: z.string(),
+	baseRef: z.string(),
+});
+export type RuntimeTaskDiffRequest = z.infer<typeof runtimeTaskDiffRequestSchema>;
+
+export const runtimeTaskDiffResponseSchema = z.object({
+	ok: z.boolean(),
+	diff: z.string(),
+	summary: z.string(),
+	error: z.string().optional(),
+});
+export type RuntimeTaskDiffResponse = z.infer<typeof runtimeTaskDiffResponseSchema>;
 
 export const runtimeHookEventSchema = z.enum(["to_review", "to_in_progress", "activity"]);
 export type RuntimeHookEvent = z.infer<typeof runtimeHookEventSchema>;

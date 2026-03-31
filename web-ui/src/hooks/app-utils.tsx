@@ -7,7 +7,7 @@ export const TASK_AUTO_REVIEW_ENABLED_STORAGE_KEY = LocalStorageKey.TaskAutoRevi
 export const TASK_AUTO_REVIEW_MODE_STORAGE_KEY = LocalStorageKey.TaskAutoReviewMode;
 
 export function normalizeStoredTaskAutoReviewMode(value: string): TaskAutoReviewMode | null {
-	if (value === "commit" || value === "pr" || value === "move_to_trash") {
+	if (value === "commit" || value === "pr" || value === "move_to_trash" || value === "agent_review") {
 		return value;
 	}
 	return null;

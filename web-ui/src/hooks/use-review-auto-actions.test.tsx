@@ -1,3 +1,4 @@
+import type React from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,6 +47,9 @@ const workspaceSnapshots: Record<string, ReviewTaskWorkspaceSnapshot> = {
 	},
 };
 
+const noopSetBoard = (() => {}) as unknown as React.Dispatch<React.SetStateAction<BoardData>>;
+const noopSendTaskSessionInput = async () => ({ ok: true });
+
 function HookHarness({
 	board,
 	runAutoReviewGitAction,
@@ -58,9 +62,12 @@ function HookHarness({
 	setTaskWorkspaceSnapshot(workspaceSnapshots["task-1"] ?? null);
 	useReviewAutoActions({
 		board,
+		setBoard: noopSetBoard,
 		taskGitActionLoadingByTaskId: {},
 		runAutoReviewGitAction,
 		requestMoveTaskToTrash,
+		sessions: {},
+		sendTaskSessionInput: noopSendTaskSessionInput,
 	});
 	return null;
 }

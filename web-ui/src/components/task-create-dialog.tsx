@@ -32,6 +32,7 @@ const AUTO_REVIEW_MODE_OPTIONS: Array<{ value: TaskAutoReviewMode; label: string
 	{ value: "commit", label: "Make commit" },
 	{ value: "pr", label: "Make PR" },
 	{ value: "move_to_trash", label: "Move to Trash" },
+	{ value: "agent_review", label: "Agent Review" },
 ];
 
 type TaskCreateStartAction = "start" | "start_and_open";

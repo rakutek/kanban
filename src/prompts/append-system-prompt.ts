@@ -183,7 +183,7 @@ Parameters:
 Purpose: create a new task in \`backlog\`, with optional plan mode and auto-review behavior.
 
 Command:
-\`${kanbanCommand} task create --prompt "<text>" [--project-path <path>] [--base-ref <branch>] [--start-in-plan-mode <true|false>] [--auto-review-enabled <true|false>] [--auto-review-mode commit|pr|move_to_trash]\`
+\`${kanbanCommand} task create --prompt "<text>" [--project-path <path>] [--base-ref <branch>] [--start-in-plan-mode <true|false>] [--auto-review-enabled <true|false>] [--auto-review-mode commit|pr|move_to_trash|agent_review]\`
 
 Parameters:
 - \`--prompt "<text>"\` required task prompt text.
@@ -191,14 +191,14 @@ Parameters:
 - \`--base-ref <branch>\` optional base branch/worktree ref. Defaults to current branch, then default branch, then first known branch.
 - \`--start-in-plan-mode <true|false>\` optional. Default false. Set true only when explicitly requested.
 - \`--auto-review-enabled <true|false>\` optional. Default false. Enables automatic action once task reaches review.
-- \`--auto-review-mode commit|pr|move_to_trash\` optional auto-review action. Default \`commit\`.
+- \`--auto-review-mode commit|pr|move_to_trash|agent_review\` optional auto-review action. Default \`commit\`.
 
 ## task update
 
 Purpose: update an existing task, including prompt, base ref, plan mode, and auto-review behavior.
 
 Command:
-\`${kanbanCommand} task update --task-id <task_id> [--prompt "<text>"] [--project-path <path>] [--base-ref <branch>] [--start-in-plan-mode <true|false>] [--auto-review-enabled <true|false>] [--auto-review-mode commit|pr|move_to_trash]\`
+\`${kanbanCommand} task update --task-id <task_id> [--prompt "<text>"] [--project-path <path>] [--base-ref <branch>] [--start-in-plan-mode <true|false>] [--auto-review-enabled <true|false>] [--auto-review-mode commit|pr|move_to_trash|agent_review]\`
 
 Parameters:
 - \`--task-id <task_id>\` required task ID.
@@ -207,7 +207,7 @@ Parameters:
 - \`--base-ref <branch>\` optional replacement base ref.
 - \`--start-in-plan-mode <true|false>\` optional replacement of plan-mode behavior.
 - \`--auto-review-enabled <true|false>\` optional replacement of auto-review toggle. Set false to cancel pending automatic review actions.
-- \`--auto-review-mode commit|pr|move_to_trash\` optional replacement auto-review action.
+- \`--auto-review-mode commit|pr|move_to_trash|agent_review\` optional replacement auto-review action.
 
 Notes:
 - Provide at least one field to change in addition to \`--task-id\`.

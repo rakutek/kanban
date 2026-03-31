@@ -423,6 +423,17 @@ export function BoardCard({
 	const cancelAutomaticActionLabel =
 		!isTrashCard && card.autoReviewEnabled ? getTaskAutoReviewCancelButtonLabel(card.autoReviewMode) : null;
 
+	const agentReviewInfo =
+		columnId === "review" && card.autoReviewEnabled && card.autoReviewMode === "agent_review"
+			? {
+					iterationCount: card.agentReviewIterationCount ?? 0,
+					maxIterations: card.agentReviewMaxIterations ?? 3,
+					hasChildTask: Boolean(card.agentReviewChildTaskId),
+				}
+			: null;
+
+	const isAgentReviewChildTask = Boolean(card.agentReviewParentTaskId);
+
 	return (
 		<Draggable draggableId={card.id} index={index} isDragDisabled={false}>
 			{(provided, snapshot) => {
@@ -767,6 +778,23 @@ export function BoardCard({
 									>
 										Open PR
 									</Button>
+								</div>
+							) : null}
+							{agentReviewInfo ? (
+								<div
+									className="flex items-center gap-1.5 text-[11px] text-text-secondary mt-2"
+									onMouseDown={stopEvent}
+								>
+									<span className="inline-block w-1.5 h-1.5 rounded-full bg-status-blue animate-pulse" />
+									<span>
+										Agent Review {agentReviewInfo.iterationCount}/{agentReviewInfo.maxIterations}
+										{agentReviewInfo.hasChildTask ? " — reviewing..." : ""}
+									</span>
+								</div>
+							) : null}
+							{isAgentReviewChildTask ? (
+								<div className="text-[10px] text-status-purple mt-1 truncate" onMouseDown={stopEvent}>
+									Review task
 								</div>
 							) : null}
 							{cancelAutomaticActionLabel && onCancelAutomaticAction ? (

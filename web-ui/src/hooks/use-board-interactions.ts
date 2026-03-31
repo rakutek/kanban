@@ -1,14 +1,18 @@
 import type { DropResult } from "@hello-pangea/dnd";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildAgentReviewPrompt } from "@/agent-review/build-agent-review-prompt";
 import { notifyError, showAppToast } from "@/components/app-toaster";
 import type { TaskGitAction } from "@/git-actions/build-task-git-action-prompt";
 import { useLinkedBacklogTaskActions } from "@/hooks/use-linked-backlog-task-actions";
 import { useProgrammaticCardMoves } from "@/hooks/use-programmatic-card-moves";
 import { useReviewAutoActions } from "@/hooks/use-review-auto-actions";
 import type { UseTaskSessionsResult } from "@/hooks/use-task-sessions";
+import { getRuntimeTrpcClient } from "@/runtime/trpc-client";
 import type { RuntimeTaskSessionSummary, RuntimeTaskWorkspaceInfoResponse } from "@/runtime/types";
 import {
+	addTaskDependency,
+	addTaskToColumnWithResult,
 	applyDragResult,
 	clearColumnTasks,
 	disableTaskAutoReview,
@@ -89,6 +93,8 @@ export interface UseBoardInteractionsResult {
 	handleConfirmClearTrash: () => void;
 	handleAddReviewComments: (taskId: string, text: string) => Promise<void>;
 	handleSendReviewComments: (taskId: string, text: string) => Promise<void>;
+	handleRunAgentReview: (taskId: string) => void;
+	agentReviewLaunchingByTaskId: Record<string, boolean>;
 	moveToTrashLoadingById: Record<string, boolean>;
 	trashTaskCount: number;
 }
@@ -523,12 +529,113 @@ export function useBoardInteractions({
 		setRequestMoveTaskToTrashHandler(requestMoveTaskToTrash);
 	}, [requestMoveTaskToTrash, setRequestMoveTaskToTrashHandler]);
 
+	const fetchTaskDiff = useCallback(
+		async (taskId: string, baseRef: string) => {
+			if (!currentProjectId) {
+				return null;
+			}
+			try {
+				const trpcClient = getRuntimeTrpcClient(currentProjectId);
+				const result = await trpcClient.workspace.getTaskDiff.query({ taskId, baseRef });
+				if (!result.ok) {
+					return null;
+				}
+				return { diff: result.diff, summary: result.summary };
+			} catch {
+				return null;
+			}
+		},
+		[currentProjectId],
+	);
+
+	const createAndStartReviewTask = useCallback(
+		async (parentTask: BoardCard, reviewPrompt: string): Promise<string | null> => {
+			try {
+				const created = addTaskToColumnWithResult(board, "backlog", {
+					prompt: reviewPrompt,
+					baseRef: parentTask.baseRef,
+					autoReviewEnabled: true,
+					autoReviewMode: "agent_review",
+					agentReviewParentTaskId: parentTask.id,
+				});
+				// Add dependency: review task (backlog) depends on parent task (review)
+				const withDependency = addTaskDependency(created.board, created.task.id, parentTask.id);
+				setBoard(withDependency.board);
+				const started = await startTaskSession(created.task);
+				if (!started.ok) {
+					return null;
+				}
+				setBoard((currentBoard) => {
+					const currentColumnId = getTaskColumnId(currentBoard, created.task.id);
+					if (currentColumnId !== "backlog") {
+						return currentBoard;
+					}
+					const moved = moveTaskToColumn(currentBoard, created.task.id, "in_progress", { insertAtTop: true });
+					return moved.moved ? moved.board : currentBoard;
+				});
+				return created.task.id;
+			} catch {
+				return null;
+			}
+		},
+		[board, setBoard, startTaskSession],
+	);
+
+	const [agentReviewLaunchingByTaskId, setAgentReviewLaunchingByTaskId] = useState<Record<string, boolean>>({});
+
+	const handleRunAgentReview = useCallback(
+		(taskId: string) => {
+			const selection = findCardSelection(board, taskId);
+			if (!selection || selection.column.id !== "review") {
+				return;
+			}
+			setAgentReviewLaunchingByTaskId((current) => ({ ...current, [taskId]: true }));
+			void fetchTaskDiff(taskId, selection.card.baseRef)
+				.then(async (diffResult) => {
+					if (!diffResult) {
+						showAppToast({
+							intent: "danger",
+							icon: "warning-sign",
+							message: "Could not fetch task diff for agent review.",
+							timeout: 5000,
+						});
+						return;
+					}
+					const reviewPrompt = buildAgentReviewPrompt({
+						originalTaskPrompt: selection.card.prompt,
+						diff: diffResult.diff,
+						diffSummary: diffResult.summary,
+					});
+					const reviewTaskId = await createAndStartReviewTask(selection.card, reviewPrompt);
+					if (!reviewTaskId) {
+						showAppToast({
+							intent: "danger",
+							icon: "warning-sign",
+							message: "Could not create agent review task.",
+							timeout: 5000,
+						});
+					}
+				})
+				.finally(() => {
+					setAgentReviewLaunchingByTaskId((current) => {
+						const next = { ...current };
+						delete next[taskId];
+						return next;
+					});
+				});
+		},
+		[board, createAndStartReviewTask, fetchTaskDiff],
+	);
+
 	useReviewAutoActions({
 		board,
+		setBoard,
 		taskGitActionLoadingByTaskId,
 		runAutoReviewGitAction,
 		requestMoveTaskToTrash: requestMoveTaskToTrashWithAnimation,
 		resetKey: currentProjectId,
+		sessions,
+		sendTaskSessionInput,
 	});
 
 	const resumeTaskFromTrash = useCallback(
@@ -892,6 +999,8 @@ export function useBoardInteractions({
 		handleConfirmClearTrash,
 		handleAddReviewComments,
 		handleSendReviewComments,
+		handleRunAgentReview,
+		agentReviewLaunchingByTaskId,
 		moveToTrashLoadingById,
 		trashTaskCount,
 	};

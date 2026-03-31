@@ -1,8 +1,11 @@
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
+import { buildAgentReviewFeedbackPrompt } from "@/agent-review/build-agent-review-prompt";
 import type { TaskGitAction } from "@/git-actions/build-task-git-action-prompt";
 import { findCardSelection } from "@/state/board-state";
 import { getTaskWorkspaceSnapshot, subscribeToAnyTaskMetadata } from "@/stores/workspace-metadata-store";
+import type { SendTerminalInputOptions } from "@/terminal/terminal-input";
 import type { BoardCard, BoardColumnId, BoardData, TaskAutoReviewMode } from "@/types";
 import { resolveTaskAutoReviewMode } from "@/types";
 
@@ -21,8 +24,14 @@ interface RequestMoveTaskToTrashOptions {
 	skipWorkingChangeWarning?: boolean;
 }
 
+interface AgentReviewSessionLike {
+	state: string;
+	latestHookActivity?: { finalMessage?: string | null } | null;
+}
+
 interface UseReviewAutoActionsOptions {
 	board: BoardData;
+	setBoard: Dispatch<SetStateAction<BoardData>>;
 	taskGitActionLoadingByTaskId: Record<string, TaskGitActionLoadingStateLike>;
 	runAutoReviewGitAction: (taskId: string, action: TaskGitAction) => Promise<boolean>;
 	requestMoveTaskToTrash: (
@@ -31,14 +40,30 @@ interface UseReviewAutoActionsOptions {
 		options?: RequestMoveTaskToTrashOptions,
 	) => Promise<void>;
 	resetKey?: string | null;
+	sessions: Record<string, AgentReviewSessionLike>;
+	sendTaskSessionInput: (
+		taskId: string,
+		text: string,
+		options?: SendTerminalInputOptions,
+	) => Promise<{ ok: boolean; message?: string }>;
+}
+
+type AgentReviewPhase = "idle" | "creating_review" | "review_running" | "processing_result";
+
+interface AgentReviewState {
+	reviewTaskId: string | null;
+	phase: AgentReviewPhase;
 }
 
 export function useReviewAutoActions({
 	board,
+	setBoard,
 	taskGitActionLoadingByTaskId,
 	runAutoReviewGitAction,
 	requestMoveTaskToTrash,
 	resetKey,
+	sessions,
+	sendTaskSessionInput,
 }: UseReviewAutoActionsOptions): void {
 	const boardRef = useRef<BoardData>(board);
 	const runAutoReviewGitActionRef = useRef(runAutoReviewGitAction);
@@ -47,6 +72,10 @@ export function useReviewAutoActions({
 	const timerByTaskIdRef = useRef<Record<string, number>>({});
 	const scheduledActionByTaskIdRef = useRef<Record<string, TaskAutoReviewMode>>({});
 	const moveToTrashInFlightTaskIdsRef = useRef<Set<string>>(new Set());
+	const agentReviewStateByTaskIdRef = useRef<Record<string, AgentReviewState>>({});
+	const sendTaskSessionInputRef = useRef(sendTaskSessionInput);
+	const setBoardRef = useRef(setBoard);
+	const sessionsRef = useRef(sessions);
 
 	useEffect(() => {
 		boardRef.current = board;
@@ -59,6 +88,18 @@ export function useReviewAutoActions({
 	useEffect(() => {
 		requestMoveTaskToTrashRef.current = requestMoveTaskToTrash;
 	}, [requestMoveTaskToTrash]);
+
+	useEffect(() => {
+		sendTaskSessionInputRef.current = sendTaskSessionInput;
+	}, [sendTaskSessionInput]);
+
+	useEffect(() => {
+		setBoardRef.current = setBoard;
+	}, [setBoard]);
+
+	useEffect(() => {
+		sessionsRef.current = sessions;
+	}, [sessions]);
 
 	const clearAutoReviewTimer = useCallback((taskId: string) => {
 		const timer = timerByTaskIdRef.current[taskId];
@@ -77,6 +118,7 @@ export function useReviewAutoActions({
 		timerByTaskIdRef.current = {};
 		scheduledActionByTaskIdRef.current = {};
 		moveToTrashInFlightTaskIdsRef.current.clear();
+		agentReviewStateByTaskIdRef.current = {};
 	}, []);
 
 	const scheduleAutoReviewAction = useCallback((taskId: string, action: TaskAutoReviewMode, execute: () => void) => {
@@ -186,6 +228,106 @@ export function useReviewAutoActions({
 					continue;
 				}
 
+				if (autoReviewMode === "agent_review") {
+					// Agent review tasks are created manually via the "Run Agent Review" button.
+					// Here we only handle feedback collection: when ALL review child tasks for
+					// a parent have completed, collect their feedback and send it to the parent.
+					if (reviewTask.agentReviewParentTaskId) {
+						// This is a completed review child task — skip individual processing.
+						// Feedback collection happens at the parent level below.
+						continue;
+					}
+
+					// This is a parent task. Check if all its review children are done.
+					const childTasks: BoardCard[] = [];
+					for (const col of boardRef.current.columns) {
+						for (const card of col.cards) {
+							if (card.agentReviewParentTaskId === reviewTask.id) {
+								childTasks.push(card);
+							}
+						}
+					}
+
+					if (childTasks.length === 0) {
+						// No review children yet — nothing to do
+						continue;
+					}
+
+					const allChildrenInReview = childTasks.every((child) => {
+						const childSession = sessionsRef.current[child.id];
+						return childSession?.state === "awaiting_review";
+					});
+
+					if (!allChildrenInReview) {
+						// Some children still running — wait
+						continue;
+					}
+
+					// Prevent double-processing
+					if (agentReviewStateByTaskIdRef.current[reviewTask.id]?.phase === "processing_result") {
+						continue;
+					}
+
+					agentReviewStateByTaskIdRef.current[reviewTask.id] = {
+						reviewTaskId: null,
+						phase: "processing_result",
+					};
+
+					scheduleAutoReviewAction(reviewTask.id, "agent_review", () => {
+						// Collect feedback from all children
+						const feedbacks: Array<{ taskId: string; finalMessage: string }> = [];
+						for (const child of childTasks) {
+							const childSession = sessionsRef.current[child.id];
+							const msg = childSession?.latestHookActivity?.finalMessage;
+							if (msg) {
+								feedbacks.push({ taskId: child.id, finalMessage: msg });
+							}
+						}
+
+						if (feedbacks.length === 0) {
+							delete agentReviewStateByTaskIdRef.current[reviewTask.id];
+							// Trash children even if no feedback
+							for (const child of childTasks) {
+								void requestMoveTaskToTrashRef.current(child.id, "review", {
+									skipWorkingChangeWarning: true,
+								});
+							}
+							return;
+						}
+
+						const feedbackPrompt = buildAgentReviewFeedbackPrompt({
+							originalTaskPrompt: reviewTask.prompt,
+							feedbacks,
+						});
+
+						// Send feedback to the parent task session, then trash children
+						void sendTaskSessionInputRef
+							.current(reviewTask.id, feedbackPrompt, { appendNewline: false, mode: "paste" })
+							.then(async (typed) => {
+								if (!typed.ok) {
+									return;
+								}
+								await new Promise<void>((r) => {
+									window.setTimeout(r, 200);
+								});
+								await sendTaskSessionInputRef.current(reviewTask.id, "\r", {
+									appendNewline: false,
+								});
+
+								// Trash all review children
+								for (const child of childTasks) {
+									void requestMoveTaskToTrashRef.current(child.id, "review", {
+										skipWorkingChangeWarning: true,
+									});
+								}
+							})
+							.finally(() => {
+								delete agentReviewStateByTaskIdRef.current[reviewTask.id];
+							});
+					});
+					continue;
+				}
+
 				// Commit/PR automation mental model:
 				// - A task is only "armed" for auto-trash after we actually see working changes in review and trigger commit/pr.
 				// - Review entries with zero changes (common during start-in-plan-mode planning loops) are intentionally ignored.
@@ -259,7 +401,7 @@ export function useReviewAutoActions({
 		evaluateAutoReview({
 			source: "board_or_loading_change",
 		});
-	}, [board, evaluateAutoReview, taskGitActionLoadingByTaskId]);
+	}, [board, evaluateAutoReview, taskGitActionLoadingByTaskId, sessions]);
 
 	useEffect(() => {
 		return subscribeToAnyTaskMetadata((taskId) => {

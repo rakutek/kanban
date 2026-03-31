@@ -62,6 +62,8 @@ import type {
 	RuntimeTaskChatReloadResponse,
 	RuntimeTaskChatSendRequest,
 	RuntimeTaskChatSendResponse,
+	RuntimeTaskDiffRequest,
+	RuntimeTaskDiffResponse,
 	RuntimeTaskSessionInputRequest,
 	RuntimeTaskSessionInputResponse,
 	RuntimeTaskSessionStartRequest,
@@ -139,6 +141,8 @@ import {
 	runtimeTaskChatReloadResponseSchema,
 	runtimeTaskChatSendRequestSchema,
 	runtimeTaskChatSendResponseSchema,
+	runtimeTaskDiffRequestSchema,
+	runtimeTaskDiffResponseSchema,
 	runtimeTaskSessionInputRequestSchema,
 	runtimeTaskSessionInputResponseSchema,
 	runtimeTaskSessionStartRequestSchema,
@@ -302,6 +306,10 @@ export interface RuntimeTrpcContext {
 			scope: RuntimeTrpcWorkspaceScope,
 			input: RuntimeGitCommitDiffRequest,
 		) => Promise<RuntimeGitCommitDiffResponse>;
+		loadTaskDiff: (
+			scope: RuntimeTrpcWorkspaceScope,
+			input: RuntimeTaskDiffRequest,
+		) => Promise<RuntimeTaskDiffResponse>;
 	};
 	projectsApi: {
 		listProjects: (preferredWorkspaceId: string | null) => Promise<RuntimeProjectsResponse>;
@@ -598,6 +606,12 @@ export const runtimeAppRouter = t.router({
 			.output(runtimeGitCommitDiffResponseSchema)
 			.query(async ({ ctx, input }) => {
 				return await ctx.workspaceApi.loadCommitDiff(ctx.workspaceScope, input);
+			}),
+		getTaskDiff: workspaceProcedure
+			.input(runtimeTaskDiffRequestSchema)
+			.output(runtimeTaskDiffResponseSchema)
+			.query(async ({ ctx, input }) => {
+				return await ctx.workspaceApi.loadTaskDiff(ctx.workspaceScope, input);
 			}),
 	}),
 	projects: t.router({

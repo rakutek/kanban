@@ -203,6 +203,8 @@ export function CardDetailView({
 	onOpenPrTask,
 	onAgentCommitTask,
 	onAgentOpenPrTask,
+	onRunAgentReview,
+	agentReviewLaunching = false,
 	onMoveReviewCardToTrash,
 	onRestoreTaskFromTrash,
 	onCancelAutomaticTaskAction,
@@ -258,6 +260,8 @@ export function CardDetailView({
 	onOpenPrTask?: (taskId: string) => void;
 	onAgentCommitTask?: (taskId: string) => void;
 	onAgentOpenPrTask?: (taskId: string) => void;
+	onRunAgentReview?: (taskId: string) => void;
+	agentReviewLaunching?: boolean;
 	onMoveReviewCardToTrash?: (taskId: string) => void;
 	onRestoreTaskFromTrash?: (taskId: string) => void;
 	onCancelAutomaticTaskAction?: (taskId: string) => void;
@@ -686,6 +690,19 @@ export function CardDetailView({
 										isExpanded={isDiffExpanded}
 										onToggleExpand={handleToggleDiffExpand}
 									/>
+								) : null}
+								{selection.column.id === "review" && onRunAgentReview ? (
+									<div className="flex items-center gap-2 px-2 py-1 border-b border-border">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-6 text-xs text-status-blue hover:text-[#86BEFF]"
+											onClick={() => onRunAgentReview(selection.card.id)}
+											disabled={agentReviewLaunching}
+										>
+											{agentReviewLaunching ? "Launching..." : "Run Agent Review"}
+										</Button>
+									</div>
 								) : null}
 								<div style={{ display: "flex", flex: "1 1 0", minHeight: 0 }}>
 									{isWorkspaceChangesPending ? (
