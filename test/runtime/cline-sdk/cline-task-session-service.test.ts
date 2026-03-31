@@ -913,15 +913,15 @@ describe("InMemoryClineTaskSessionService", () => {
 		});
 		services.push(service);
 
-			await service.startTaskSession({
-				taskId: "task-1",
-				cwd: "/tmp/worktree",
-				prompt: "Initial prompt",
-			});
-			await waitForTaskSessionId(runtime, "task-1");
+		await service.startTaskSession({
+			taskId: "task-1",
+			cwd: "/tmp/worktree",
+			prompt: "Initial prompt",
+		});
+		await waitForTaskSessionId(runtime, "task-1");
 
-			runtimeSetup.resolvePromptMock.mockImplementation((prompt: string) => `workflow:${prompt}`);
-			await service.sendTaskSessionInput("task-1", "/continue");
+		runtimeSetup.resolvePromptMock.mockImplementation((prompt: string) => `workflow:${prompt}`);
+		await service.sendTaskSessionInput("task-1", "/continue");
 		await vi.waitFor(() => {
 			expect(runtime.sendTaskSessionInputMock).toHaveBeenCalledWith(
 				"task-1",

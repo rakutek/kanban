@@ -36,12 +36,12 @@ import {
 	setOrCreateAssistantMessage,
 	updateSummary,
 } from "./cline-session-state";
-import { SDK_DEFAULT_MODEL_ID, SDK_DEFAULT_PROVIDER_ID } from "./sdk-provider-boundary";
 import {
 	type ClineRuntimeSetupLease,
 	type ClineWatcherRegistry,
 	createClineWatcherRegistry,
 } from "./cline-watcher-registry";
+import { SDK_DEFAULT_MODEL_ID, SDK_DEFAULT_PROVIDER_ID } from "./sdk-provider-boundary";
 import {
 	type ClineSdkPersistedMessage,
 	type ClineSdkSlashCommand,
